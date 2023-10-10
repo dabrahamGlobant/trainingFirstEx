@@ -7,71 +7,70 @@ import (
 )
 
 type localStorage struct {
-	users map[uuid.UUID]structs.User
+	entities map[uuid.UUID]interface{}
 }
 
 func NewLocalStorage() Storage {
 	stu := localStorage{}
 	generatedUs := generateUsers()
 
-	stu.users = make(map[uuid.UUID]structs.User)
+	stu.entities = make(map[uuid.UUID]interface{})
 
 	for _, user := range generatedUs {
-		stu.users[user.ID] = user
+		stu.entities[user.ID] = user
 	}
 
 	return &stu
 }
-func (ls *localStorage) Get(uuid uuid.UUID) (structs.User, error) {
-	user, ok := ls.users[uuid]
+func (ls *localStorage) Get(uuid uuid.UUID) (interface{}, error) {
+	entity, ok := ls.entities[uuid]
 	if !ok {
-		return structs.User{}, nil // ERROR SHOULD BE ADDED HERE
+		// Generate the new error
+		return nil, structs.ErrExistingIdErr
 	}
-	return user, nil
+	return entity, nil
 
 }
 
-func (ls *localStorage) GetAll() ([]structs.User, error) {
+func (ls *localStorage) GetAll() ([]interface{}, error) {
 	// Pending to add error handling to this case.
 
-	users := make([]structs.User, 0)
+	entities := make([]interface{}, 0)
 
-	for _, val := range ls.users {
-		users = append(users, val)
+	for _, val := range ls.entities {
+		entities = append(entities, val)
 	}
-	return users, nil
+	return entities, nil
 
 }
 
-func (ls *localStorage) Create(user structs.User) (structs.User, error) {
-	_, found := ls.users[user.ID]
+func (ls *localStorage) Create(user interface{}) (interface{}, error) {
+	uuid := user.(structs.User).ID
+	_, found := ls.entities[uuid]
 	if found {
-		// Validates if the uuid exists.
-		return structs.User{}, nil // ERROR SHOULD BE ADDED HERE
+		return structs.User{}, structs.ErrExistingIdErr
 	}
-	ls.users[user.ID] = user
-	return ls.users[user.ID], nil
+	ls.entities[uuid] = user
+	return ls.entities[uuid], nil
 
 }
 
-func (ls *localStorage) Update(uuid uuid.UUID, user structs.User) (structs.User, error) {
-	_, found := ls.users[user.ID]
+func (ls *localStorage) Update(uuid uuid.UUID, user interface{}) (interface{}, error) {
+	_, found := ls.entities[uuid]
 	if !found {
-		// Validates if the uuid exists.
-		return structs.User{}, nil // ERROR SHOULD BE ADDED HERE
+		return structs.User{}, structs.ErrNotFoundErr
 	}
-	ls.users[user.ID] = user
-	return ls.users[user.ID], nil
+	ls.entities[uuid] = user
+	return ls.entities[uuid], nil
 
 }
 
 func (ls *localStorage) Delete(uuid uuid.UUID) error {
-	_, found := ls.users[uuid]
+	_, found := ls.entities[uuid]
 	if !found {
-		// Validates if the uuid exists.
-		return nil // ERROR SHOULD BE ADDED HERE
+		return structs.ErrNotFoundErr // ERROR SHOULD BE ADDED HERE
 	}
-	delete(ls.users, uuid)
+	delete(ls.entities, uuid)
 	return nil
 
 }

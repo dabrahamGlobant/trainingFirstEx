@@ -12,55 +12,45 @@ import (
 /// Interface, similar to User & User Repo.
 
 type RedisStorage struct {
-	conn *redis.Client
+	conn   *redis.Client
+	prefix string
 }
 
 func NewRedisStorage(conn *redis.Client) Storage {
-	redis := RedisStorage{conn: conn}
+	redis := RedisStorage{conn: conn, prefix: "user_"}
 
 	return &redis
 }
 
-func parser(jsonVal string) (structs.User, error) {
-	data := structs.User{}
-	err := json.Unmarshal([]byte(jsonVal), &data)
-	if err != nil {
-		return structs.User{}, nil // Pending error handling
-	}
-	return data, nil
-}
-
-func (rs *RedisStorage) Get(uuid uuid.UUID) (structs.User, error) {
-	val, errGet := rs.conn.Get(context.Background(), "user_"+uuid.String()).Result()
+func (rs *RedisStorage) Get(uuid uuid.UUID) (interface{}, error) {
+	val, errGet := rs.conn.Get(context.Background(), rs.prefix+uuid.String()).Result()
 	if errGet != nil {
-		return structs.User{}, nil // Pending error handling
+		return structs.User{}, errGet
 	}
-	return parser(val)
+	return val, nil
 
 }
 
-func (rs *RedisStorage) GetAll() ([]structs.User, error) {
+func (rs *RedisStorage) GetAll() ([]interface{}, error) {
 	// Use SCAN or KEYS to fetch all user keys
-	keys, err := rs.conn.Keys(context.Background(), "user_*").Result()
+	keys, err := rs.conn.Keys(context.Background(), rs.prefix+"*").Result()
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize a slice to store the retrieved users
-	var users []structs.User
+	var users []interface{}
 
 	// Iterate through the keys and retrieve user data
 	for _, key := range keys {
 		jsonVal, err := rs.conn.Get(context.Background(), key).Result()
 		if err != nil {
-			// Handle errors, e.g., skip or log them
-			continue
+			return nil, err
 		}
 
 		var user structs.User
 		if err := json.Unmarshal([]byte(jsonVal), &user); err != nil {
-			// Handle errors, e.g., skip or log them
-			continue
+			return nil, err
 		}
 
 		users = append(users, user)
@@ -69,58 +59,59 @@ func (rs *RedisStorage) GetAll() ([]structs.User, error) {
 	return users, nil
 }
 
-func (rs *RedisStorage) Create(user structs.User) (structs.User, error) {
-	_, found := rs.Get(user.ID)
+func (rs *RedisStorage) Create(entity interface{}) (interface{}, error) {
+	uuid := entity.(structs.User).ID
+	_, found := rs.Get(uuid)
 	if found == nil {
 		// Validates if the uuid exists.
-		return structs.User{}, nil // ERROR SHOULD BE ADDED HERE
+		return structs.User{}, found
 	}
-	data, err := json.Marshal(user)
+	data, err := json.Marshal(entity)
 
 	if err != nil {
 		return structs.User{}, err
 	}
-	err = rs.conn.Set(context.Background(), "user_"+user.ID.String(), data, 0).Err()
+	err = rs.conn.Set(context.Background(), rs.prefix+uuid.String(), data, 0).Err()
 	if err != nil {
 		panic(err)
 	}
 
 	// returns the user
-	return rs.Get(user.ID)
+	return rs.Get(uuid)
 
 }
 
-func (rs *RedisStorage) Update(uuid uuid.UUID, newUser structs.User) (structs.User, error) {
+func (rs *RedisStorage) Update(uuid uuid.UUID, entity interface{}) (interface{}, error) {
 	// Check if user exists
 	_, found := rs.Get(uuid)
 	if found != nil {
-		return structs.User{}, nil
+		return structs.User{}, structs.ErrNotFoundErr
 	}
 	// Marshal to JSON string
-	jsonVal, err := json.Marshal(newUser)
+	jsonVal, err := json.Marshal(entity)
 	if err != nil {
-		return structs.User{}, err
+		return structs.User{}, structs.ErrJsonParse
 	}
 
 	// Save in the database
-	err = rs.conn.Set(context.Background(), "user_"+newUser.ID.String(), jsonVal, 0).Err()
+	err = rs.conn.Set(context.Background(), "user_"+uuid.String(), jsonVal, 0).Err()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// Parse string to User
-	return rs.Get(newUser.ID)
+	return rs.Get(uuid)
 }
 
 func (rs *RedisStorage) Delete(uuid uuid.UUID) error {
 	// Check if user exists
 	_, found := rs.Get(uuid)
 	if found != nil {
-		return nil // Pending error handler
+		return structs.ErrExistingIdErr
 	}
 
 	// Delete the user from the database
-	err := rs.conn.Del(context.Background(), "user_"+uuid.String()).Err()
+	err := rs.conn.Del(context.Background(), rs.prefix+uuid.String()).Err()
 	if err != nil {
 		return err
 	}

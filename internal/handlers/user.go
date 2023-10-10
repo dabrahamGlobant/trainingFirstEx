@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -19,7 +22,7 @@ func GetAll(sv user.UserService) func(wr http.ResponseWriter, r *http.Request) {
 		wr.Header().Set("Content-Type", "application.json")
 
 		if err != nil {
-			//sendError(wr, http.StatusNotFound, err)
+			sendHttpError(wr, castHttpError(err))
 			return
 		}
 		wr.WriteHeader(http.StatusFound)
@@ -38,13 +41,17 @@ func Get(sv user.UserService) func(wr http.ResponseWriter, r *http.Request) {
 		uid, uidErr := uuid.Parse(id)
 
 		if uidErr != nil {
-			// Error parsing the id in the correct way
+			sendHttpError(wr, structs.HTTPError{
+				Code:        structs.WrongFormat,
+				Status:      http.StatusBadRequest,
+				Description: uidErr.Error(),
+			})
 			return
 		}
 		user, err := sv.Get(uid)
 
 		if err != nil {
-			//sendError(wr, http.StatusNotFound, err)
+			sendHttpError(wr, castHttpError(err))
 			return
 		}
 		wr.WriteHeader(http.StatusFound)
@@ -55,20 +62,25 @@ func Get(sv user.UserService) func(wr http.ResponseWriter, r *http.Request) {
 
 func Post(sv user.UserService) func(wr http.ResponseWriter, r *http.Request) {
 	fn := func(wr http.ResponseWriter, req *http.Request) {
-
-		// Possible Improvements: To make the validation better, is possible to implement third party validators like validator V10
-
 		wr.Header().Set("Content-Type", "application.json")
 		var reqBody structs.UserRequest
 		decodedBody := json.NewDecoder(req.Body)
 		if err := decodedBody.Decode(&reqBody); err != nil {
-			//Print an error
+			sendHttpError(wr, structs.HTTPError{
+				Code:        structs.WrongFormat,
+				Status:      http.StatusBadRequest,
+				Description: err.Error(),
+			})
 			return
 		}
 
 		newUsr, err := sv.Create(reqBody)
 		if err != nil {
-			// Print error
+			sendHttpError(wr, structs.HTTPError{
+				Code:        structs.WrongFormat,
+				Status:      http.StatusBadRequest,
+				Description: err.Error(),
+			})
 			return
 		}
 		wr.WriteHeader(http.StatusCreated)
@@ -88,20 +100,29 @@ func Delete(sv user.UserService) func(wr http.ResponseWriter, r *http.Request) {
 		uid, uidErr := uuid.Parse(id)
 
 		if uidErr != nil {
-			// Error parsing the ID in the correct way, return an error response
-			wr.WriteHeader(http.StatusBadRequest)
+			sendHttpError(wr, structs.HTTPError{
+				Code:        structs.WrongFormat,
+				Status:      http.StatusBadRequest,
+				Description: uidErr.Error(),
+			})
 			return
 		}
 
 		err := sv.Delete(uid)
 
 		if err != nil {
-			// Handle the error, return an error response
-			wr.WriteHeader(http.StatusNotFound)
+			sendHttpError(wr, structs.HTTPError{
+				Code:        structs.ExsistingId,
+				Status:      http.StatusNotFound,
+				Description: err.Error(),
+			})
 			return
 		}
 
 		wr.WriteHeader(http.StatusNoContent)
+		json.NewEncoder(wr).Encode(map[string]string{
+			"response": fmt.Sprintf("User Delered ID: ", id),
+		})
 	}
 	return fn
 
@@ -116,15 +137,22 @@ func Put(sv user.UserService) func(wr http.ResponseWriter, req *http.Request) {
 		uid, uidErr := uuid.Parse(id)
 
 		if uidErr != nil {
-			// Error parsing the ID in the correct way, return an error response
-			wr.WriteHeader(http.StatusBadRequest)
+			sendHttpError(wr, structs.HTTPError{
+				Code:        structs.ExsistingId,
+				Status:      http.StatusNotFound,
+				Description: uidErr.Error(),
+			})
 			return
 		}
 
 		var reqBody structs.UserRequest
 		decodedBody := json.NewDecoder(req.Body)
 		if err := decodedBody.Decode(&reqBody); err != nil {
-			// Handle the error (bad request), return an error response
+			sendHttpError(wr, structs.HTTPError{
+				Code:        structs.WrongFormat,
+				Status:      http.StatusBadRequest,
+				Description: err.Error(),
+			})
 			wr.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -133,7 +161,11 @@ func Put(sv user.UserService) func(wr http.ResponseWriter, req *http.Request) {
 		wrongBody := isValid.Struct(req)
 
 		if wrongBody != nil {
-			// Add error handler in case of body input error
+			sendHttpError(wr, structs.HTTPError{
+				Code:        structs.WrongFormat,
+				Status:      http.StatusBadRequest,
+				Description: wrongBody.Error(),
+			})
 			return
 		}
 
@@ -149,7 +181,11 @@ func Put(sv user.UserService) func(wr http.ResponseWriter, req *http.Request) {
 		updatedUser, err := sv.Update(uid, updUser)
 
 		if err != nil {
-			// Handle the error (user not found or other), return an error response
+			sendHttpError(wr, structs.HTTPError{
+				Code:        structs.NotFound,
+				Status:      http.StatusNotFound,
+				Description: err.Error(),
+			})
 			wr.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -158,4 +194,41 @@ func Put(sv user.UserService) func(wr http.ResponseWriter, req *http.Request) {
 		json.NewEncoder(wr).Encode(updatedUser)
 	}
 	return fn
+}
+func castHttpError(err error) structs.HTTPError {
+	var httpStatus int
+
+	errAssert, ok := err.(structs.ServiceError)
+	if !ok {
+		httpStatus = http.StatusInternalServerError
+	} else {
+		switch {
+		case errors.Is(err, structs.ServiceError{Code: structs.NotFound}):
+			httpStatus = http.StatusNotFound
+		case errors.Is(err, structs.ServiceError{Code: structs.ConFailed}):
+			httpStatus = http.StatusInternalServerError
+		case errors.Is(err, structs.ServiceError{Code: structs.ExsistingId}):
+			httpStatus = http.StatusConflict
+		default:
+			httpStatus = http.StatusInternalServerError
+		}
+	}
+
+	return structs.HTTPError{
+		Code:        errAssert.Code,
+		Status:      httpStatus,
+		Description: errAssert.Error(),
+	}
+}
+
+func sendHttpError(w http.ResponseWriter, httpError structs.HTTPError) {
+	response := map[string]interface{}{
+		"message": httpError.Error(),
+		"code":    httpError.Code,
+	}
+
+	w.WriteHeader(httpError.Status)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("Failed to encode JSON response", "error", err)
+	}
 }

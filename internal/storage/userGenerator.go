@@ -28,7 +28,10 @@ func generateUsers() []structs.User {
 		}
 		users = append(users, user)
 	}
-
+	interfaceSlice := make([]interface{}, len(users))
+	for i, user := range users {
+		interfaceSlice[i] = user
+	}
 	return users
 }
 
