@@ -22,21 +22,11 @@ func (u *UserService) Get(uuid uuid.UUID) (structs.User, error) {
 	res, err := u.storage.Get(uuid)
 	if err != nil {
 		return structs.User{}, structs.ServiceError{
-			Code:        structs.ExsistingId,
-			Description: err.Error(),
+			Code:        structs.NotFound,
+			Description: structs.ErrNotFoundErr.Error(),
 		}
 	}
-	user, ok := res.(structs.User)
-	if !ok {
-		user, err = parse(fmt.Sprint(res))
-		if err != nil {
-			return structs.User{}, structs.ServiceError{
-				Code:        structs.Internal,
-				Description: structs.ErrJsonParse.Error(),
-			}
-		}
-
-	}
+	user := res.(structs.User)
 	return user, nil
 }
 
@@ -54,15 +44,6 @@ func (u *UserService) GetAll() ([]structs.User, error) {
 	for _, v := range res {
 		if val, ok := v.(structs.User); ok {
 			users = append(users, val)
-		} else {
-			user, err := parse(fmt.Sprint(v))
-			if err != nil {
-				return nil, structs.ServiceError{
-					Code:        structs.Internal,
-					Description: structs.ErrJsonParse.Error(),
-				}
-			}
-			users = append(users, user)
 		}
 	}
 	return users, err
@@ -86,7 +67,7 @@ func (u *UserService) Create(req structs.UserRequest) (structs.User, error) {
 	}
 	user, ok := res.(structs.User)
 	if !ok {
-		user, err = parse(fmt.Sprint(res))
+		user, err = Parse(fmt.Sprint(res))
 	}
 	if err != nil {
 		return structs.User{}, structs.ServiceError{
@@ -124,7 +105,7 @@ func (u *UserService) Delete(uuid uuid.UUID) error {
 	return nil
 }
 
-func parse(j string) (structs.User, error) {
+func Parse(j string) (structs.User, error) {
 	data := structs.User{}
 	err := json.Unmarshal([]byte(j), &data)
 	if err != nil {

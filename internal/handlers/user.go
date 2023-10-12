@@ -121,7 +121,7 @@ func Delete(sv user.UserService) func(wr http.ResponseWriter, r *http.Request) {
 
 		wr.WriteHeader(http.StatusNoContent)
 		json.NewEncoder(wr).Encode(map[string]string{
-			"response": fmt.Sprintf("User Delered ID: ", id),
+			"response": fmt.Sprintf("User Deleted ID: %s", id),
 		})
 	}
 	return fn

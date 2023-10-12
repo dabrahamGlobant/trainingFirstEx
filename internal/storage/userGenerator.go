@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func generateUsers() []structs.User {
+func GenerateUsers() []structs.User {
 
 	rand.Seed(time.Now().UnixNano())
 	var users []structs.User

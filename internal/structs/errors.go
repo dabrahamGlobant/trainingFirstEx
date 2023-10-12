@@ -51,9 +51,15 @@ const (
 // Err Descriptions
 
 var (
-	ErrNotFoundErr    = errors.New("element  not found while looking for: ")
+	ErrNotFoundErr    = errors.New("not found")
 	ErrExistingIdErr  = errors.New("that element already exists for : ")
 	ErrWrongFormatErr = errors.New("wrong body format for : ")
 	ErrConFailedErr   = errors.New("the connection failed")
 	ErrJsonParse      = errors.New("json parse failed at : ")
+)
+
+// Test Err Codes
+
+const (
+	NotFoundTest = "not found"
 )

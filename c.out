@@ -1,0 +1,27 @@
+mode: set
+first-ex/internal/repos/user.go:16.58,18.2 1 1
+first-ex/internal/repos/user.go:20.65,23.16 2 1
+first-ex/internal/repos/user.go:23.16,28.3 1 1
+first-ex/internal/repos/user.go:29.2,30.18 2 1
+first-ex/internal/repos/user.go:33.56,35.16 2 1
+first-ex/internal/repos/user.go:35.16,40.3 1 0
+first-ex/internal/repos/user.go:42.2,44.24 2 1
+first-ex/internal/repos/user.go:44.24,45.38 1 1
+first-ex/internal/repos/user.go:45.38,47.4 1 1
+first-ex/internal/repos/user.go:49.2,49.19 1 1
+first-ex/internal/repos/user.go:51.77,62.16 4 0
+first-ex/internal/repos/user.go:62.16,67.3 1 0
+first-ex/internal/repos/user.go:68.2,69.9 2 0
+first-ex/internal/repos/user.go:69.9,71.3 1 0
+first-ex/internal/repos/user.go:72.2,72.16 1 0
+first-ex/internal/repos/user.go:72.16,77.3 1 0
+first-ex/internal/repos/user.go:78.2,78.18 1 0
+first-ex/internal/repos/user.go:82.87,85.16 2 1
+first-ex/internal/repos/user.go:85.16,90.3 1 1
+first-ex/internal/repos/user.go:91.2,93.17 2 0
+first-ex/internal/repos/user.go:96.52,99.16 2 1
+first-ex/internal/repos/user.go:99.16,104.3 1 1
+first-ex/internal/repos/user.go:105.2,105.12 1 0
+first-ex/internal/repos/user.go:108.44,111.16 3 1
+first-ex/internal/repos/user.go:111.16,113.3 1 1
+first-ex/internal/repos/user.go:114.2,114.18 1 1

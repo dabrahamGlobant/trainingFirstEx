@@ -12,7 +12,7 @@ type localStorage struct {
 
 func NewLocalStorage() Storage {
 	stu := localStorage{}
-	generatedUs := generateUsers()
+	generatedUs := GenerateUsers()
 
 	stu.entities = make(map[uuid.UUID]interface{})
 
@@ -58,17 +58,16 @@ func (ls *localStorage) Create(user interface{}) (interface{}, error) {
 func (ls *localStorage) Update(uuid uuid.UUID, user interface{}) (interface{}, error) {
 	_, found := ls.entities[uuid]
 	if !found {
-		return structs.User{}, structs.ErrNotFoundErr
+		return nil, structs.ErrNotFoundErr
 	}
 	ls.entities[uuid] = user
 	return ls.entities[uuid], nil
-
 }
 
 func (ls *localStorage) Delete(uuid uuid.UUID) error {
 	_, found := ls.entities[uuid]
 	if !found {
-		return structs.ErrNotFoundErr // ERROR SHOULD BE ADDED HERE
+		return structs.ErrNotFoundErr
 	}
 	delete(ls.entities, uuid)
 	return nil
